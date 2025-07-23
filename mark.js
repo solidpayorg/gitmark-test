@@ -29,7 +29,7 @@ async function key2pub (privateKey) {
     const compressedPubkey = getPublicKey(privateKey, true)
 
     // Remove the first byte (0x02 or 0x03) to get the x coordinate only
-    const pubkeyX = compressedPubkey.slice(2)
+    const pubkeyX = compressedPubkey.slice(1)
 
     // Convert Uint8Array to hex string
     return Array.from(pubkeyX, byte => byte.toString(16).padStart(2, '0')).join('')
