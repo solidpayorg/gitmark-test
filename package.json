@@ -1,0 +1,15 @@
+{
+  "name": "gitmark",
+  "version": "1.0.0",
+  "description": "",
+  "main": "mark.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "txo_parser": "^0.0.2"
+  }
+}
