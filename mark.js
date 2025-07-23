@@ -7,6 +7,39 @@ const path = require('path');
 // txo_parser will be dynamically imported as it's an ES module
 
 /**
+ * Converts a Taproot private key (64-character hex string) to a public key (64-character hex string)
+ *
+ * @param {string} privateKey - 64-character hex string representing the private key
+ * @returns {string} 64-character hex string representing the public key
+ * @throws {Error} if the private key format is invalid
+ */
+async function key2pub (privateKey) {
+  // Validate private key format
+  if (!/^[0-9a-fA-F]{64}$/.test(privateKey)) {
+    throw new Error(
+      'Invalid private key format. Expected 64-character hex string.'
+    )
+  }
+
+  try {
+    // Get the public key using @noble/secp256k1
+    const { getPublicKey } = await import('@noble/secp256k1');
+
+    // getPublicKey returns a 33-byte compressed key by default, we need to convert it to 32-byte x-only format
+    const compressedPubkey = getPublicKey(privateKey, true)
+
+    // Remove the first byte (0x02 or 0x03) to get the x coordinate only
+    const pubkeyX = compressedPubkey.slice(2)
+
+    return pubkeyX
+  } catch (error) {
+    throw new Error(
+      `Failed to convert private key to public key: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+}
+
+/**
  * Add two or more hexadecimal values together
  * 
  * @param {...string} hexValues - Hexadecimal strings (with or without 0x prefix)
@@ -123,8 +156,8 @@ async function main () {
     console.log(`DEBUG: PRIVKEY (truncated): ${PRIVKEY.substring(0, 4)}...${PRIVKEY.substring(PRIVKEY.length - 4)}`);
 
     console.log('DEBUG: Generating public key from private key');
-    const PUBKEY = timeOperation('generate initial pubkey', () =>
-      execSync(`npx key2pub "${PRIVKEY}"`).toString().trim()
+    const PUBKEY = await timeOperationAsync('generate initial pubkey', () =>
+      key2pub(PRIVKEY)
     );
     console.log(`DEBUG: PUBKEY: ${PUBKEY}`);
 
@@ -189,8 +222,8 @@ async function main () {
     console.log(`DEBUG: SIGNING_KEY (truncated): ${SIGNING_KEY.substring(0, 4)}...${SIGNING_KEY.substring(SIGNING_KEY.length - 4)}`);
 
     console.log('DEBUG: Generating public key from signing key');
-    const SIGNING_PUBKEY = timeOperation('generate signing pubkey', () =>
-      execSync(`npx key2pub "${SIGNING_KEY}"`).toString().trim()
+    const SIGNING_PUBKEY = await timeOperationAsync('generate signing pubkey', () =>
+      key2pub(SIGNING_KEY)
     );
     console.log(`DEBUG: SIGNING_PUBKEY: ${SIGNING_PUBKEY}`);
 
@@ -235,8 +268,8 @@ async function main () {
 
     // Generate new public key for destination
     console.log(`DEBUG: Generating new public key from NEWKEY for destination`);
-    const NEWPUB = timeOperation('generate destination pubkey', () =>
-      execSync(`npx key2pub "${NEWKEY}"`).toString().trim()
+    const NEWPUB = await timeOperationAsync('generate destination pubkey', () =>
+      key2pub(NEWKEY)
     );
     console.log(`DEBUG: NEWPUB (destination): ${NEWPUB}`);
 
