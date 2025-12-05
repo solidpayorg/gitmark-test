@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -135,7 +135,7 @@ async function main () {
     // Get commit message from first argument or use default
     const commitMessage = process.argv[2] || "first";
     console.log(`DEBUG: Running git commit with message: "${commitMessage}"`);
-    timeOperation('git commit', () => execSync(`git commit -m "${commitMessage}"`));
+    timeOperation('git commit', () => execFileSync('git', ['commit', '-m', commitMessage]));
     console.log('DEBUG: Git operations completed successfully');
 
     const TXOFILE = '.well-known/txo/txo.json';
