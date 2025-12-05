@@ -11,8 +11,8 @@
   "license": "ISC",
   "dependencies": {
     "@noble/secp256k1": "^2.3.0",
+    "btctx": "^0.1.0",
     "sendtx": "^0.1.0",
-    "txbuilder": "file:../txbuilder",
     "txo_parser": "^0.0.2"
   }
 }

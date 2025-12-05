@@ -289,7 +289,7 @@ async function main () {
     // Execute txbuilder
     try {
       debug(' Executing txbuilder...');
-      const { buildTx } = await import('txbuilder');
+      const { buildTx } = await import('btctx');
       const { hex: LAST_LINE, txid: builtTxid } = await timeOperationAsync('execute txbuilder', () =>
         buildTx({
           privateKey: SIGNING_KEY,
