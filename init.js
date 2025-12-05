@@ -14,7 +14,7 @@ import fs from 'fs';
 import path from 'path';
 import { generateKeypair, getPublicKey } from './lib/keys.js';
 import { setPrivateKey, setNetwork, isGitRepo, getPrivateKey } from './lib/config.js';
-import { parseVoucher, createVoucher, INIT_AMOUNT, MIN_FEE } from './lib/voucher.js';
+import { parseVoucher, createVoucher, loadVoucher, saveVoucher, INIT_AMOUNT, MIN_FEE } from './lib/voucher.js';
 
 const args = process.argv.slice(2);
 
@@ -27,8 +27,10 @@ Usage:
   git mark-init [options] [voucher-uri]
 
 Arguments:
-  voucher-uri    TXO voucher URI to fund the new wallet
+  voucher        TXO voucher URI or path to voucher file
                  Format: txo:<chain>:<txid>:<vout>?amount=<sats>&key=<key>
+                 If a file path is given, the voucher is read from the file
+                 and updated with the change output after use.
 
 Options:
   -h, --help     Show this help message
@@ -37,8 +39,11 @@ Options:
   --force        Overwrite existing key
 
 Examples:
-  # Initialize with a voucher
+  # Initialize with a voucher URI
   git mark-init "txo:tbtc4:abc...def:0?amount=5000000&key=123...abc"
+
+  # Initialize from voucher file (file is updated with change)
+  git mark-init /path/to/faucet.voucher
 
   # Just generate a key (no funding)
   git mark-init
@@ -59,7 +64,35 @@ if (args.includes('--version') || args.includes('-v')) {
 // Parse flags
 const useGlobal = args.includes('--global');
 const force = args.includes('--force');
-const voucherArg = args.find(a => a.startsWith('urn:voucher:') || a.startsWith('txo:'));
+
+// Find voucher argument - can be a URI or a file path
+const voucherArgRaw = args.find(a =>
+  !a.startsWith('-') &&
+  a !== '--global' &&
+  a !== '--force'
+);
+
+// Resolve voucher: if it's a file, read from it
+let voucherArg = null;
+let voucherFile = null;
+
+if (voucherArgRaw) {
+  if (voucherArgRaw.startsWith('txo:') || voucherArgRaw.startsWith('urn:voucher:')) {
+    // Direct URI
+    voucherArg = voucherArgRaw;
+  } else if (fs.existsSync(voucherArgRaw)) {
+    // File path - read voucher from file
+    voucherFile = voucherArgRaw;
+    voucherArg = loadVoucher(voucherFile);
+    if (!voucherArg) {
+      console.error(`Error: Could not read voucher from file: ${voucherFile}`);
+      process.exit(1);
+    }
+  } else {
+    console.error(`Error: Invalid voucher. Must be a txo: URI or a file path.`);
+    process.exit(1);
+  }
+}
 
 async function main() {
   console.log('=== git-mark-init ===\n');
@@ -155,7 +188,7 @@ async function main() {
       // Set network
       setNetwork(voucher.chain, useGlobal);
 
-      // Print new voucher URI for change (so it can be reused)
+      // Update voucher with change output
       if (changeAmount > 0) {
         const newVoucher = createVoucher({
           chain: voucher.chain,
@@ -165,8 +198,18 @@ async function main() {
           amount: changeAmount,
           pubkey: voucherPubkey,
         });
-        console.log(`\n--- New faucet voucher (share to replenish) ---`);
-        console.log(newVoucher);
+
+        // If loaded from file, save new voucher back to file
+        if (voucherFile) {
+          saveVoucher(newVoucher, voucherFile);
+          console.log(`\nVoucher file updated: ${voucherFile}`);
+        } else {
+          console.log(`\n--- New faucet voucher (share to replenish) ---`);
+          console.log(newVoucher);
+        }
+      } else if (voucherFile) {
+        // No change - voucher is exhausted
+        console.log(`\nWarning: Voucher exhausted (no change). File not updated.`);
       }
 
       console.log('\n=== Initialization complete! ===');
