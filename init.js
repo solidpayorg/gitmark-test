@@ -86,7 +86,7 @@ async function main() {
   // Save to git config
   const scope = useGlobal ? 'global' : 'local';
   setPrivateKey(privateKey, useGlobal);
-  console.log(`Private key saved to ${scope} git config (gitmark.key)`);
+  console.log(`Private key saved to ${scope} git config (nostr.privkey)`);
 
   // If voucher provided, fund the new wallet
   if (voucherArg) {
