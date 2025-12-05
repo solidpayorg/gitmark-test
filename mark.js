@@ -299,9 +299,10 @@ async function main () {
       // Send transaction
       try {
         console.log(`DEBUG: Sending transaction to network ${NETWORK}`);
-        console.log(`DEBUG: Running sendtx.sh with last line of txbuilder output and network ${NETWORK}`);
-        const NEWTX = timeOperation('send transaction', () =>
-          execFileSync('/home/melvin/bin/sendtx.sh', [LAST_LINE, NETWORK]).toString().trim()
+        console.log(`DEBUG: Broadcasting transaction to ${NETWORK}`);
+        const { default: sendtx } = await import('sendtx');
+        const NEWTX = await timeOperationAsync('send transaction', () =>
+          sendtx(LAST_LINE, NETWORK)
         );
         console.log(`DEBUG: Transaction successfully sent, NEWTX: ${NEWTX}`);
 
