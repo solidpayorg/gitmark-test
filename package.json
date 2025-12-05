@@ -1,6 +1,6 @@
 {
   "name": "gitmark-test",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.1",
   "description": "Git-based Bitcoin transaction management using Taproot",
   "main": "mark.js",
   "type": "module",
