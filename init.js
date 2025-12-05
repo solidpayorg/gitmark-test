@@ -28,7 +28,7 @@ Usage:
 
 Arguments:
   voucher-uri    TXO voucher URI to fund the new wallet
-                 Format: urn:voucher:txo:<chain>:<txid>:<vout>?key=<key>&amount=<sats>
+                 Format: txo:<chain>:<txid>:<vout>?amount=<sats>&key=<key>
 
 Options:
   -h, --help     Show this help message
@@ -38,7 +38,7 @@ Options:
 
 Examples:
   # Initialize with a voucher
-  git mark-init "urn:voucher:txo:tbtc4:abc...def:0?key=123...abc&amount=5000000"
+  git mark-init "txo:tbtc4:abc...def:0?amount=5000000&key=123...abc"
 
   # Just generate a key (no funding)
   git mark-init
@@ -183,7 +183,7 @@ async function main() {
     console.log(`  1. Send testnet4 coins to address derived from pubkey: ${publicKey}`);
     console.log('  2. Create .well-known/txo/txo.json with the TXO URI');
     console.log('\nOr run again with a voucher:');
-    console.log('  git mark-init "urn:voucher:txo:tbtc4:<txid>:<vout>?key=<key>&amount=<sats>"');
+    console.log('  git mark-init "txo:tbtc4:<txid>:<vout>?amount=<sats>&key=<key>"');
   }
 }
 
