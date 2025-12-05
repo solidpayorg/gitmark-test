@@ -4,6 +4,14 @@ const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// Check for --verbose or -v flag
+const VERBOSE = process.argv.includes('--verbose') || process.argv.includes('-v');
+
+// Debug logging helper - only logs when VERBOSE is true
+function debug(...args) {
+  if (VERBOSE) debug('', ...args);
+}
+
 // txo_parser will be dynamically imported as it's an ES module
 
 /**
@@ -122,48 +130,48 @@ async function timeOperationAsync (name, operation) {
   }
 }
 
-console.log('=== GITMARK DEBUG START ===');
+if (VERBOSE) console.log('=== GITMARK DEBUG START ===');
 const scriptStart = performance.now();
-console.log('Starting script execution at:', new Date().toISOString());
+if (VERBOSE) console.log('Starting script execution at:', new Date().toISOString());
 
 async function main () {
   try {
     // Git operations
-    console.log('DEBUG: Running git add .');
+    debug('Running git add .');
     timeOperation('git add', () => execSync('git add .'));
 
     // Get commit message from first argument or use default
     const commitMessage = process.argv[2] || "first";
-    console.log(`DEBUG: Running git commit with message: "${commitMessage}"`);
+    debug(` Running git commit with message: "${commitMessage}"`);
     timeOperation('git commit', () => execFileSync('git', ['commit', '-m', commitMessage]));
-    console.log('DEBUG: Git operations completed successfully');
+    debug(' Git operations completed successfully');
 
     const TXOFILE = '.well-known/txo/txo.json';
     const NETWORK = 'tbtc4';
-    console.log(`DEBUG: Configuration - TXOFILE: ${TXOFILE}, NETWORK: ${NETWORK}`);
+    debug(` Configuration - TXOFILE: ${TXOFILE}, NETWORK: ${NETWORK}`);
 
     // Get commit hash
-    console.log('DEBUG: Getting commit hash');
+    debug(' Getting commit hash');
     const COMMIT_HASH = timeOperation('get commit hash', () =>
       execSync('git log -1 --format=%H').toString().trim()
     );
-    console.log(`DEBUG: COMMIT_HASH: ${COMMIT_HASH}`);
+    debug(` COMMIT_HASH: ${COMMIT_HASH}`);
 
     // Get private key from git config
-    console.log('DEBUG: Getting private key from git config');
+    debug(' Getting private key from git config');
     const PRIVKEY = timeOperation('get private key', () =>
       execSync('git config nostr.privkey').toString().trim()
     );
-    console.log(`DEBUG: PRIVKEY (truncated): ${PRIVKEY.substring(0, 4)}...${PRIVKEY.substring(PRIVKEY.length - 4)}`);
+    debug(` PRIVKEY (truncated): ${PRIVKEY.substring(0, 4)}...${PRIVKEY.substring(PRIVKEY.length - 4)}`);
 
-    console.log('DEBUG: Generating public key from private key');
+    debug(' Generating public key from private key');
     const PUBKEY = await timeOperationAsync('generate initial pubkey', () =>
       key2pub(PRIVKEY)
     );
-    console.log(`DEBUG: PUBKEY: ${PUBKEY}`);
+    debug(` PUBKEY: ${PUBKEY}`);
 
     // Read txo.json file
-    console.log(`DEBUG: Reading TXO file from ${TXOFILE}`);
+    debug(` Reading TXO file from ${TXOFILE}`);
     if (!fs.existsSync(TXOFILE)) {
       console.error(`DEBUG: ERROR - File not found: ${TXOFILE}`);
       process.exit(1);
@@ -171,12 +179,12 @@ async function main () {
 
     const { txoFileContent, txoData } = timeOperation('read and parse TXO file', () => {
       const content = fs.readFileSync(TXOFILE, 'utf8');
-      console.log(`DEBUG: Raw TXO file content: ${content}`);
+      debug(` Raw TXO file content: ${content}`);
       const data = JSON.parse(content);
       return { txoFileContent: content, txoData: data };
     });
 
-    console.log(`DEBUG: Parsed TXO data, contains ${txoData.length} entries`);
+    debug(` Parsed TXO data, contains ${txoData.length} entries`);
 
     if (txoData.length === 0) {
       console.error('DEBUG: ERROR - No TXO entries found in file');
@@ -184,161 +192,161 @@ async function main () {
     }
 
     const lastTxo = txoData[txoData.length - 1];
-    console.log(`DEBUG: Last TXO entry: ${lastTxo}`);
+    debug(` Last TXO entry: ${lastTxo}`);
 
     // Extract all commit hashes from txo.json items and sum them
-    console.log('DEBUG: Extracting and summing commit hashes from TXO entries');
+    debug(' Extracting and summing commit hashes from TXO entries');
     const commitHashSum = timeOperation('process TXO entries and sum commits', () => {
       let sum = '';
       for (let i = 0; i < txoData.length; i++) {
         const txoItem = txoData[i];
-        console.log(`DEBUG: Processing TXO entry ${i + 1}: ${txoItem}`);
+        debug(` Processing TXO entry ${i + 1}: ${txoItem}`);
 
         const commitMatch = txoItem.match(/commit=([0-9a-f]+)/);
         if (commitMatch && commitMatch[1]) {
           const currentCommit = commitMatch[1];
-          console.log(`DEBUG: Found commit hash in entry ${i + 1}: ${currentCommit}`);
+          debug(` Found commit hash in entry ${i + 1}: ${currentCommit}`);
 
           if (sum) {
-            console.log(`DEBUG: Adding commit hash to existing sum: ${sum} + ${currentCommit}`);
+            debug(` Adding commit hash to existing sum: ${sum} + ${currentCommit}`);
             sum = safeAddHex(sum, currentCommit);
           } else {
-            console.log(`DEBUG: First commit hash, setting as initial sum: ${currentCommit}`);
+            debug(` First commit hash, setting as initial sum: ${currentCommit}`);
             sum = currentCommit;
           }
-          console.log(`DEBUG: Current commit hash sum after entry ${i + 1}: ${sum}`);
+          debug(` Current commit hash sum after entry ${i + 1}: ${sum}`);
         } else {
-          console.log(`DEBUG: No commit hash found in entry ${i + 1}`);
+          debug(` No commit hash found in entry ${i + 1}`);
         }
       }
       return sum;
     });
-    console.log(`DEBUG: Final commit hash sum from TXO entries: ${commitHashSum || 'EMPTY'}`);
+    debug(` Final commit hash sum from TXO entries: ${commitHashSum || 'EMPTY'}`);
 
     // Calculate private key for signing the transaction (PRIVKEY + commit hashes from JSON)
-    console.log(`DEBUG: Calculating signing key: addhex "${PRIVKEY.substring(0, 4)}...${PRIVKEY.substring(PRIVKEY.length - 4)}" "${commitHashSum || 'EMPTY'}"`);
+    debug(` Calculating signing key: addhex "${PRIVKEY.substring(0, 4)}...${PRIVKEY.substring(PRIVKEY.length - 4)}" "${commitHashSum || 'EMPTY'}"`);
     const SIGNING_KEY = timeOperation('calculate signing key', () =>
       commitHashSum ? safeAddHex(PRIVKEY, commitHashSum) : PRIVKEY
     );
-    console.log(`DEBUG: SIGNING_KEY (truncated): ${SIGNING_KEY.substring(0, 4)}...${SIGNING_KEY.substring(SIGNING_KEY.length - 4)}`);
+    debug(` SIGNING_KEY (truncated): ${SIGNING_KEY.substring(0, 4)}...${SIGNING_KEY.substring(SIGNING_KEY.length - 4)}`);
 
-    console.log('DEBUG: Generating public key from signing key');
+    debug(' Generating public key from signing key');
     const SIGNING_PUBKEY = await timeOperationAsync('generate signing pubkey', () =>
       key2pub(SIGNING_KEY)
     );
-    console.log(`DEBUG: SIGNING_PUBKEY: ${SIGNING_PUBKEY}`);
+    debug(` SIGNING_PUBKEY: ${SIGNING_PUBKEY}`);
 
     // Add current commit hash to the sum for the new destination address
-    console.log(`DEBUG: Adding current commit hash to sum: ${commitHashSum || 'EMPTY'} + ${COMMIT_HASH}`);
+    debug(` Adding current commit hash to sum: ${commitHashSum || 'EMPTY'} + ${COMMIT_HASH}`);
     const finalCommitHashSum = timeOperation('add current commit to sum', () => {
       if (commitHashSum) {
         const addHexCommand = `addhex "${commitHashSum}" "${COMMIT_HASH}"`;
-        console.log(`DEBUG: Running command: ${addHexCommand}`);
+        debug(` Running command: ${addHexCommand}`);
         return safeAddHex(commitHashSum, COMMIT_HASH);
       } else {
         return COMMIT_HASH;
       }
     });
-    console.log(`DEBUG: Final commit hash sum including current commit: ${finalCommitHashSum}`);
+    debug(` Final commit hash sum including current commit: ${finalCommitHashSum}`);
 
     // Calculate new key by adding hex values with all commit hashes (including current commit)
-    console.log(`DEBUG: Calculating destination key: addhex "${PRIVKEY.substring(0, 4)}...${PRIVKEY.substring(PRIVKEY.length - 4)}" "${finalCommitHashSum}"`);
+    debug(` Calculating destination key: addhex "${PRIVKEY.substring(0, 4)}...${PRIVKEY.substring(PRIVKEY.length - 4)}" "${finalCommitHashSum}"`);
     const NEWKEY = timeOperation('calculate destination key', () =>
       safeAddHex(PRIVKEY, finalCommitHashSum)
     );
-    console.log(`DEBUG: NEWKEY (truncated): ${NEWKEY.substring(0, 4)}...${NEWKEY.substring(NEWKEY.length - 4)}`);
+    debug(` NEWKEY (truncated): ${NEWKEY.substring(0, 4)}...${NEWKEY.substring(NEWKEY.length - 4)}`);
 
     // Parse transaction information
-    console.log(`DEBUG: Parsing transaction info from last TXO: ${lastTxo}`);
+    debug(` Parsing transaction info from last TXO: ${lastTxo}`);
 
     const { TXID, OUTPUT, AMOUNT } = await timeOperationAsync('parse TXO URI', async () => {
-      console.log(`DEBUG: Parsing TXO URI directly: ${lastTxo}`);
+      debug(` Parsing TXO URI directly: ${lastTxo}`);
       const { parseTxoUri } = await import('txo_parser');
       const parsed = parseTxoUri(lastTxo);
-      console.log(`DEBUG: Parsed TXID: ${parsed.txid}`);
-      console.log(`DEBUG: Parsed OUTPUT: ${parsed.output}`);
-      console.log(`DEBUG: Parsed AMOUNT: ${parsed.amount}`);
+      debug(` Parsed TXID: ${parsed.txid}`);
+      debug(` Parsed OUTPUT: ${parsed.output}`);
+      debug(` Parsed AMOUNT: ${parsed.amount}`);
       return { TXID: parsed.txid, OUTPUT: parsed.output, AMOUNT: parsed.amount };
     });
 
     // Calculate fee and new amount
     const FEE = 1000;
-    console.log(`DEBUG: Fee set to ${FEE} satoshis`);
+    debug(` Fee set to ${FEE} satoshis`);
     const NEWAMOUNT = AMOUNT - FEE;
-    console.log(`DEBUG: New amount after fee: ${NEWAMOUNT} satoshis (${AMOUNT} - ${FEE})`);
+    debug(` New amount after fee: ${NEWAMOUNT} satoshis (${AMOUNT} - ${FEE})`);
 
     // Generate new public key for destination
-    console.log(`DEBUG: Generating new public key from NEWKEY for destination`);
+    debug(` Generating new public key from NEWKEY for destination`);
     const NEWPUB = await timeOperationAsync('generate destination pubkey', () =>
       key2pub(NEWKEY)
     );
-    console.log(`DEBUG: NEWPUB (destination): ${NEWPUB}`);
+    debug(` NEWPUB (destination): ${NEWPUB}`);
 
     // Build transaction
-    console.log('DEBUG: Constructing txbuilder command');
+    debug(' Constructing txbuilder command');
     const txbuilderPath = '/home/melvin/remote/github.com/melvincarvalho/txbuilder/txbuilder.sh';
     const txbuilderArgs = [SIGNING_KEY, SIGNING_PUBKEY, TXID, String(OUTPUT), String(AMOUNT), NEWPUB, String(NEWAMOUNT)];
-    console.log(`DEBUG: txbuilder command (with sensitive data masked): ${txbuilderPath} "***SIGNING_KEY***" "${SIGNING_PUBKEY}" "${TXID}" "${OUTPUT}" "${AMOUNT}" "${NEWPUB}" "${NEWAMOUNT}"`);
+    debug(` txbuilder command (with sensitive data masked): ${txbuilderPath} "***SIGNING_KEY***" "${SIGNING_PUBKEY}" "${TXID}" "${OUTPUT}" "${AMOUNT}" "${NEWPUB}" "${NEWAMOUNT}"`);
 
     // Execute txbuilder command
     try {
-      console.log('DEBUG: Executing txbuilder command...');
+      debug(' Executing txbuilder command...');
       const { TXBUILDER_OUTPUT, LAST_LINE } = timeOperation('execute txbuilder', () => {
         const output = execFileSync(txbuilderPath, txbuilderArgs).toString();
-        console.log(`DEBUG: txbuilder raw output: ${output}`);
+        debug(` txbuilder raw output: ${output}`);
 
         const outputLines = output.split('\n').filter(Boolean);
-        console.log(`DEBUG: txbuilder output has ${outputLines.length} lines`);
+        debug(` txbuilder output has ${outputLines.length} lines`);
 
         const lastLine = outputLines.pop();
-        console.log(`DEBUG: Last line of txbuilder output: ${lastLine}`);
+        debug(` Last line of txbuilder output: ${lastLine}`);
 
         return { TXBUILDER_OUTPUT: output, LAST_LINE: lastLine };
       });
 
       // Send transaction
       try {
-        console.log(`DEBUG: Sending transaction to network ${NETWORK}`);
-        console.log(`DEBUG: Broadcasting transaction to ${NETWORK}`);
+        debug(` Sending transaction to network ${NETWORK}`);
+        debug(` Broadcasting transaction to ${NETWORK}`);
         const { default: sendtx } = await import('sendtx');
         const NEWTX = await timeOperationAsync('send transaction', () =>
           sendtx(LAST_LINE, NETWORK)
         );
-        console.log(`DEBUG: Transaction successfully sent, NEWTX: ${NEWTX}`);
+        debug(` Transaction successfully sent, NEWTX: ${NEWTX}`);
 
         // Calculate new values for TXO URI - use the new destination key/pubkey for the URI
-        console.log('DEBUG: Using calculated NEWKEY/NEWPUB for the TXO URI');
+        debug(' Using calculated NEWKEY/NEWPUB for the TXO URI');
 
         const TXO_URI = `txo:tbtc4:${NEWTX}:0?amount=${NEWAMOUNT}&pubkey=${NEWPUB}&commit=${COMMIT_HASH}`;
-        console.log(`DEBUG: Generated TXO_URI: ${TXO_URI}`);
+        debug(` Generated TXO_URI: ${TXO_URI}`);
 
         // Update txo.json file and save to .git/txo.txt
-        console.log(`DEBUG: Updating TXO file (${TXOFILE}) with new TXO_URI`);
-        console.log(`DEBUG: Current txoData has ${txoData.length} entries`);
+        debug(` Updating TXO file (${TXOFILE}) with new TXO_URI`);
+        debug(` Current txoData has ${txoData.length} entries`);
 
         timeOperation('update TXO files', () => {
           txoData.push(TXO_URI);
-          console.log(`DEBUG: After adding new URI, txoData has ${txoData.length} entries`);
+          debug(` After adding new URI, txoData has ${txoData.length} entries`);
 
           const jsonString = JSON.stringify(txoData, null, 2);
-          console.log(`DEBUG: Writing ${jsonString.length} bytes to ${TXOFILE}`);
+          debug(` Writing ${jsonString.length} bytes to ${TXOFILE}`);
           fs.writeFileSync(TXOFILE, jsonString);
 
           // Also save to .git/txo.txt
           const gitTxoPath = '.git/txo.json';
-          console.log(`DEBUG: Also writing ${jsonString.length} bytes to ${gitTxoPath}`);
+          debug(` Also writing ${jsonString.length} bytes to ${gitTxoPath}`);
 
           // Ensure .git directory exists (it should, but just in case)
           const gitDir = '.git';
           if (!fs.existsSync(gitDir)) {
-            console.log(`DEBUG: Creating ${gitDir} directory`);
+            debug(` Creating ${gitDir} directory`);
             fs.mkdirSync(gitDir, { recursive: true });
           }
 
           fs.writeFileSync(gitTxoPath, jsonString);
-          console.log(`DEBUG: Successfully wrote TXO data to ${gitTxoPath}`);
+          debug(` Successfully wrote TXO data to ${gitTxoPath}`);
         });
-        console.log(`DEBUG: Successfully added new TXO URI to ${TXOFILE} and .git/txo.txt`);
+        debug(` Successfully added new TXO URI to ${TXOFILE} and .git/txo.txt`);
       } catch (error) {
         console.error(`DEBUG: ERROR in sendtx: ${error.message}`);
         console.error('DEBUG: Error stack trace:');
@@ -359,7 +367,7 @@ async function main () {
     const scriptEnd = performance.now();
     const totalDuration = scriptEnd - scriptStart;
     console.log(`BENCHMARK: TOTAL SCRIPT EXECUTION TIME: ${formatTime(totalDuration)}`);
-    console.log('=== GITMARK DEBUG END ===');
+    if (VERBOSE) console.log('=== GITMARK DEBUG END ===');
   } catch (error) {
     const scriptEnd = performance.now();
     const totalDuration = scriptEnd - scriptStart;
@@ -370,7 +378,7 @@ async function main () {
     if (error.stdout) console.error(`Command output: ${error.stdout.toString()}`);
     if (error.stderr) console.error(`Command stderr: ${error.stderr.toString()}`);
     console.error(`BENCHMARK: SCRIPT FAILED AFTER: ${formatTime(totalDuration)}`);
-    console.error('=== GITMARK DEBUG END WITH ERROR ===');
+    if (VERBOSE) console.error('=== GITMARK DEBUG END WITH ERROR ===');
     process.exit(1);
   }
 }
