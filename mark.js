@@ -310,19 +310,33 @@ async function main () {
         const TXO_URI = `txo:tbtc4:${NEWTX}:0?amount=${NEWAMOUNT}&pubkey=${NEWPUB}&commit=${COMMIT_HASH}`;
         console.log(`DEBUG: Generated TXO_URI: ${TXO_URI}`);
 
-        // Update txo.json file
+        // Update txo.json file and save to .git/txo.txt
         console.log(`DEBUG: Updating TXO file (${TXOFILE}) with new TXO_URI`);
         console.log(`DEBUG: Current txoData has ${txoData.length} entries`);
 
-        timeOperation('update TXO file', () => {
+        timeOperation('update TXO files', () => {
           txoData.push(TXO_URI);
           console.log(`DEBUG: After adding new URI, txoData has ${txoData.length} entries`);
 
           const jsonString = JSON.stringify(txoData, null, 2);
           console.log(`DEBUG: Writing ${jsonString.length} bytes to ${TXOFILE}`);
           fs.writeFileSync(TXOFILE, jsonString);
+
+          // Also save to .git/txo.txt
+          const gitTxoPath = '.git/txo.json';
+          console.log(`DEBUG: Also writing ${jsonString.length} bytes to ${gitTxoPath}`);
+
+          // Ensure .git directory exists (it should, but just in case)
+          const gitDir = '.git';
+          if (!fs.existsSync(gitDir)) {
+            console.log(`DEBUG: Creating ${gitDir} directory`);
+            fs.mkdirSync(gitDir, { recursive: true });
+          }
+
+          fs.writeFileSync(gitTxoPath, jsonString);
+          console.log(`DEBUG: Successfully wrote TXO data to ${gitTxoPath}`);
         });
-        console.log(`DEBUG: Successfully added new TXO URI to ${TXOFILE}`);
+        console.log(`DEBUG: Successfully added new TXO URI to ${TXOFILE} and .git/txo.txt`);
       } catch (error) {
         console.error(`DEBUG: ERROR in sendtx: ${error.message}`);
         console.error('DEBUG: Error stack trace:');
