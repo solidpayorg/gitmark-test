@@ -11,6 +11,7 @@
  */
 
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { generateKeypair, getPublicKey } from './lib/keys.js';
 import { setPrivateKey, setNetwork, isGitRepo, getPrivateKey } from './lib/config.js';
@@ -65,6 +66,9 @@ if (args.includes('--version') || args.includes('-v')) {
 const useGlobal = args.includes('--global');
 const force = args.includes('--force');
 
+// Default faucet location
+const DEFAULT_FAUCET = path.join(os.homedir(), '.gitmark', 'faucet.txt');
+
 // Find voucher argument - can be a URI or a file path
 const voucherArgRaw = args.find(a =>
   !a.startsWith('-') &&
@@ -91,6 +95,13 @@ if (voucherArgRaw) {
   } else {
     console.error(`Error: Invalid voucher. Must be a txo: URI or a file path.`);
     process.exit(1);
+  }
+} else if (fs.existsSync(DEFAULT_FAUCET)) {
+  // No voucher provided, but default faucet exists
+  voucherFile = DEFAULT_FAUCET;
+  voucherArg = loadVoucher(voucherFile);
+  if (voucherArg) {
+    console.log(`Using default faucet: ${DEFAULT_FAUCET}`);
   }
 }
 
