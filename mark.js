@@ -283,26 +283,25 @@ async function main () {
     debug(` NEWPUB (destination): ${NEWPUB}`);
 
     // Build transaction
-    debug(' Constructing txbuilder command');
-    const txbuilderPath = '/home/melvin/remote/github.com/melvincarvalho/txbuilder/txbuilder.sh';
-    const txbuilderArgs = [SIGNING_KEY, SIGNING_PUBKEY, TXID, String(OUTPUT), String(AMOUNT), NEWPUB, String(NEWAMOUNT)];
-    debug(` txbuilder command (with sensitive data masked): ${txbuilderPath} "***SIGNING_KEY***" "${SIGNING_PUBKEY}" "${TXID}" "${OUTPUT}" "${AMOUNT}" "${NEWPUB}" "${NEWAMOUNT}"`);
+    debug(' Building transaction with txbuilder');
+    debug(` txbuilder params (sensitive data masked): privateKey=***SIGNING_KEY*** publicKey=${SIGNING_PUBKEY} txid=${TXID} vout=${OUTPUT} inputAmount=${AMOUNT} output=${NEWPUB}:${NEWAMOUNT}`);
 
-    // Execute txbuilder command
+    // Execute txbuilder
     try {
-      debug(' Executing txbuilder command...');
-      const { TXBUILDER_OUTPUT, LAST_LINE } = timeOperation('execute txbuilder', () => {
-        const output = execFileSync(txbuilderPath, txbuilderArgs).toString();
-        debug(` txbuilder raw output: ${output}`);
-
-        const outputLines = output.split('\n').filter(Boolean);
-        debug(` txbuilder output has ${outputLines.length} lines`);
-
-        const lastLine = outputLines.pop();
-        debug(` Last line of txbuilder output: ${lastLine}`);
-
-        return { TXBUILDER_OUTPUT: output, LAST_LINE: lastLine };
-      });
+      debug(' Executing txbuilder...');
+      const { buildTx } = await import('txbuilder');
+      const { hex: LAST_LINE, txid: builtTxid } = await timeOperationAsync('execute txbuilder', () =>
+        buildTx({
+          privateKey: SIGNING_KEY,
+          publicKey: SIGNING_PUBKEY,
+          txid: TXID,
+          vout: OUTPUT,
+          inputAmount: AMOUNT,
+          outputs: [{ pubkey: NEWPUB, amount: NEWAMOUNT }],
+        })
+      );
+      debug(` txbuilder output txid: ${builtTxid}`);
+      debug(` txbuilder output hex: ${LAST_LINE.substring(0, 20)}...`);
 
       // Send transaction
       try {
