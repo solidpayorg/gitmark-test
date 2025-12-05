@@ -3,8 +3,10 @@
   "version": "0.1.0-alpha.1",
   "description": "Git-based Bitcoin transaction management using Taproot",
   "main": "mark.js",
+  "type": "module",
   "bin": {
-    "git-mark": "./mark.js"
+    "git-mark": "./mark.js",
+    "git-mark-init": "./init.js"
   },
   "keywords": [
     "git",

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-const { execSync, execFileSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync, execFileSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 
 // Check for --verbose or -v flag
 const VERBOSE = process.argv.includes('--verbose') || process.argv.includes('-v');
