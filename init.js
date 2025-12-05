@@ -196,7 +196,6 @@ async function main() {
           vout: 1,
           privateKey: voucher.privateKey,
           amount: changeAmount,
-          pubkey: voucherPubkey,
         });
 
         // If loaded from file, save new voucher back to file
