@@ -276,14 +276,15 @@ async function main () {
 
     // Build transaction
     console.log('DEBUG: Constructing txbuilder command');
-    const txbuilderCommand = `/home/melvin/remote/github.com/melvincarvalho/txbuilder/txbuilder.sh "${SIGNING_KEY}" "${SIGNING_PUBKEY}" "${TXID}" "${OUTPUT}" "${AMOUNT}" "${NEWPUB}" "${NEWAMOUNT}"`;
-    console.log(`DEBUG: txbuilder command (with sensitive data masked): /home/melvin/remote/github.com/melvincarvalho/txbuilder/txbuilder.sh "***SIGNING_KEY***" "${SIGNING_PUBKEY}" "${TXID}" "${OUTPUT}" "${AMOUNT}" "${NEWPUB}" "${NEWAMOUNT}"`);
+    const txbuilderPath = '/home/melvin/remote/github.com/melvincarvalho/txbuilder/txbuilder.sh';
+    const txbuilderArgs = [SIGNING_KEY, SIGNING_PUBKEY, TXID, String(OUTPUT), String(AMOUNT), NEWPUB, String(NEWAMOUNT)];
+    console.log(`DEBUG: txbuilder command (with sensitive data masked): ${txbuilderPath} "***SIGNING_KEY***" "${SIGNING_PUBKEY}" "${TXID}" "${OUTPUT}" "${AMOUNT}" "${NEWPUB}" "${NEWAMOUNT}"`);
 
     // Execute txbuilder command
     try {
       console.log('DEBUG: Executing txbuilder command...');
       const { TXBUILDER_OUTPUT, LAST_LINE } = timeOperation('execute txbuilder', () => {
-        const output = execSync(txbuilderCommand).toString();
+        const output = execFileSync(txbuilderPath, txbuilderArgs).toString();
         console.log(`DEBUG: txbuilder raw output: ${output}`);
 
         const outputLines = output.split('\n').filter(Boolean);
